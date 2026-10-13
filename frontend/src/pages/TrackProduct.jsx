@@ -6,38 +6,50 @@ function TrackProduct() {
     const [searchParams] = useSearchParams()
 
     const [productId, setProductId] = useState('')
-    const [searchedProduct, setSearchedProduct] = useState(null)
+    const [productData, setProductData] = useState(null)
+
+    const [loading, setLoading] = useState(false)
     const [searchError, setSearchError] = useState('')
 
-    const productData = {
-        productId: searchedProduct,
-        productName: 'Test Product',
-        category: 'Food',
-        currentLocation: 'Retailer',
-        currentStatus: 'In Supply Chain',
-        journey: [
-            {
-                stage: 'Manufacturer',
-                participant: 'Manufacturer',
-                status: 'Completed',
-                date: '-',
-                icon: 'bi-building'
-            },
-            {
-                stage: 'Distributor',
-                participant: 'Distributor',
-                status: 'Completed',
-                date: '-',
-                icon: 'bi-truck'
-            },
-            {
-                stage: 'Retailer',
-                participant: 'Retailer',
-                status: 'Current',
-                date: '-',
-                icon: 'bi-shop'
+    async function fetchProduct(productCode) {
+
+        if (!productCode) {
+            return
+        }
+
+        setLoading(true)
+        setSearchError('')
+        setProductData(null)
+
+        try {
+
+            const response = await fetch(
+                `http://localhost:5000/api/products/track/${encodeURIComponent(productCode)}`
+            )
+
+            const data = await response.json()
+
+            if (!response.ok) {
+                throw new Error(
+                    data.message || 'Failed to fetch product'
+                )
             }
-        ]
+
+            setProductData(data)
+
+        } catch (error) {
+
+            console.error(error)
+
+            setSearchError(
+                error.message || 'Unable to fetch product information'
+            )
+
+        } finally {
+
+            setLoading(false)
+
+        }
     }
 
     function handleSearch(event) {
@@ -45,16 +57,18 @@ function TrackProduct() {
         event.preventDefault()
 
         setSearchError('')
+        setProductData(null)
 
         const enteredProductId = productId.trim()
 
         if (!enteredProductId) {
+
             setSearchError('Please enter a product ID.')
-            setSearchedProduct(null)
+
             return
         }
 
-        setSearchedProduct(enteredProductId)
+        fetchProduct(enteredProductId)
     }
 
     useEffect(() => {
@@ -62,17 +76,117 @@ function TrackProduct() {
         const product = searchParams.get('product')
 
         if (product) {
+
             setProductId(product)
-            setSearchedProduct(product)
-            setSearchError('')
+
+            fetchProduct(product)
+
         }
 
     }, [searchParams])
+
+    function formatDate(date) {
+
+        if (!date) {
+            return '-'
+        }
+
+        return new Date(date).toLocaleString()
+    }
+
+    function getStageIcon(role) {
+
+        const normalizedRole = role?.toLowerCase()
+
+        if (normalizedRole === 'manufacturer') {
+            return 'bi-building'
+        }
+
+        if (normalizedRole === 'distributor') {
+            return 'bi-truck'
+        }
+
+        if (normalizedRole === 'wholesaler') {
+            return 'bi-box-seam'
+        }
+
+        if (normalizedRole === 'retailer') {
+            return 'bi-shop'
+        }
+
+        return 'bi-person'
+    }
+
+    function getRoleName(role) {
+
+        if (!role) {
+            return 'Participant'
+        }
+
+        return role.charAt(0).toUpperCase() + role.slice(1)
+    }
+
+    function getCurrentLocation() {
+
+        if (!productData) {
+            return '-'
+        }
+
+        const transfers = productData.transfers || []
+
+        if (transfers.length === 0) {
+
+            return 'Manufacturer'
+
+        }
+
+        const lastTransfer = transfers[transfers.length - 1]
+
+        return getRoleName(lastTransfer.to_user_role)
+    }
+
+    function getCurrentParticipant() {
+
+        if (!productData) {
+            return '-'
+        }
+
+        const transfers = productData.transfers || []
+
+        if (transfers.length === 0) {
+
+            return productData.manufacturer?.name || 'Manufacturer'
+
+        }
+
+        const lastTransfer = transfers[transfers.length - 1]
+
+        return lastTransfer.to_user_name
+    }
+
+    function getCurrentStatus() {
+
+        if (!productData) {
+            return '-'
+        }
+
+        const transfers = productData.transfers || []
+
+        if (transfers.length === 0) {
+            return 'Manufactured'
+        }
+
+        const lastTransfer = transfers[transfers.length - 1]
+
+        return lastTransfer.status || 'In Supply Chain'
+    }
 
     return (
         <section className="py-5">
 
             <div className="container">
+
+                {/* Page Header */}
 
                 <div className="text-center mb-5">
 
@@ -112,6 +226,7 @@ function TrackProduct() {
                                         placeholder="Enter product ID e.g. P001"
                                         value={productId}
                                         onChange={(event) => {
+
                                             setProductId(event.target.value)
                                             setSearchError('')
                                         }}
@@ -120,9 +235,28 @@ function TrackProduct() {
                                     <button
                                         type="submit"
                                         className="btn btn-primary"
+                                        disabled={loading}
                                     >
-                                        <i className="bi bi-search me-2"></i>
-                                        Track
+
+                                        {loading ? (
+
+                                            <>
+                                                <span
+                                                    className="spinner-border spinner-border-sm me-2"
+                                                ></span>
+
+                                                Tracking...
+                                            </>
+
+                                        ) : (
+
+                                            <>
+                                                <i className="bi bi-search me-2"></i>
+                                                Track
+                                            </>
+
+                                        )}
+
                                     </button>
 
                                 </div>
@@ -149,7 +283,9 @@ function TrackProduct() {
 
                 )}
 
-                {searchedProduct && (
+                {/* Product Data */}
+
+                {productData && (
 
                     <>
 
@@ -164,7 +300,7 @@ function TrackProduct() {
                                 </h4>
 
                                 <span className="badge bg-success">
-                                    Trackable
+                                    Verified
                                 </span>
 
                             </div>
@@ -178,7 +314,7 @@ function TrackProduct() {
                                     </p>
 
                                     <h6 className="fw-bold">
-                                        {productData.productId}
+                                        {productData.product.product_id}
                                     </h6>
 
                                 </div>
@@ -190,7 +326,7 @@ function TrackProduct() {
                                     </p>
 
                                     <h6 className="fw-bold">
-                                        {productData.productName}
+                                        {productData.product.product_name}
                                     </h6>
 
                                 </div>
@@ -202,7 +338,19 @@ function TrackProduct() {
                                     </p>
 
                                     <h6 className="fw-bold">
-                                        {productData.category}
+                                        {productData.product.category}
+                                    </h6>
+
+                                </div>
+
+                                <div className="col-md-6 mb-3">
+
+                                    <p className="text-secondary mb-1">
+                                        Current Quantity
+                                    </p>
+
+                                    <h6 className="fw-bold">
+                                        {productData.product.quantity}
                                     </h6>
 
                                 </div>
@@ -214,7 +362,19 @@ function TrackProduct() {
                                     </p>
 
                                     <h6 className="fw-bold">
-                                        {productData.currentLocation}
+                                        {getCurrentLocation()}
+                                    </h6>
+
+                                </div>
+
+                                <div className="col-md-6 mb-3">
+
+                                    <p className="text-secondary mb-1">
+                                        Current Holder
+                                    </p>
+
+                                    <h6 className="fw-bold">
+                                        {getCurrentParticipant()}
                                     </h6>
 
                                 </div>
@@ -222,12 +382,64 @@ function TrackProduct() {
                                 <div className="col-md-6">
 
                                     <p className="text-secondary mb-1">
-                                        Current Status
+                                        Product Status
                                     </p>
 
                                     <span className="badge bg-success">
-                                        {productData.currentStatus}
+                                        {productData.product.status}
                                     </span>
+
+                                </div>
+
+                                <div className="col-md-6">
+
+                                    <p className="text-secondary mb-1">
+                                        Created
+                                    </p>
+
+                                    <h6 className="fw-bold">
+                                        {formatDate(
+                                            productData.product.created_at
+                                        )}
+                                    </h6>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        {/* Manufacturer Information */}
+
+                        <div className="card border-0 shadow-sm p-4 mt-4">
+
+                            <h4 className="fw-bold mb-4">
+                                Manufacturer Information
+                            </h4>
+
+                            <div className="row">
+
+                                <div className="col-md-6 mb-3">
+
+                                    <p className="text-secondary mb-1">
+                                        Manufacturer
+                                    </p>
+
+                                    <h6 className="fw-bold">
+                                        {productData.manufacturer?.name || '-'}
+                                    </h6>
+
+                                </div>
+
+                                <div className="col-md-6 mb-3">
+
+                                    <p className="text-secondary mb-1">
+                                        Email
+                                    </p>
+
+                                    <h6 className="fw-bold">
+                                        {productData.manufacturer?.email || '-'}
+                                    </h6>
 
                                 </div>
 
@@ -250,8 +462,10 @@ function TrackProduct() {
                                     <thead>
 
                                         <tr>
-                                            <th>Stage</th>
-                                            <th>Participant</th>
+                                            <th>#</th>
+                                            <th>From</th>
+                                            <th>To</th>
+                                            <th>Quantity</th>
                                             <th>Status</th>
                                             <th>Date</th>
                                         </tr>
@@ -260,47 +474,112 @@ function TrackProduct() {
 
                                     <tbody>
 
-                                        {productData.journey.map((item, index) => (
+                                        {/* Manufacturing Stage */}
 
-                                            <tr key={index}>
+                                        <tr>
 
-                                                <td>
-                                                    <i
-                                                        className={`bi ${item.icon} text-primary me-2`}
-                                                    ></i>
+                                            <td>
+                                                <i className="bi bi-building text-primary me-2"></i>
+                                                1
+                                            </td>
 
-                                                    {item.stage}
-                                                </td>
+                                            <td>
+                                                {productData.manufacturer?.name || '-'}
+                                            </td>
 
-                                                <td>
-                                                    {item.participant}
-                                                </td>
+                                            <td>
+                                                Product Created
+                                            </td>
 
-                                                <td>
+                                            <td>
+                                                -
+                                            </td>
 
-                                                    {item.status === 'Current' ? (
+                                            <td>
 
-                                                        <span className="badge bg-warning text-dark">
-                                                            Current
-                                                        </span>
+                                                <span className="badge bg-success">
+                                                    Manufactured
+                                                </span>
 
-                                                    ) : (
+                                            </td>
+
+                                            <td>
+                                                {formatDate(
+                                                    productData.product.created_at
+                                                )}
+                                            </td>
+
+                                        </tr>
+
+                                        {/* Transfer Stages */}
+
+                                        {productData.transfers?.map(
+                                            (transfer, index) => (
+
+                                                <tr key={transfer.id}>
+
+                                                    <td>
+
+                                                        <i
+                                                            className={`bi ${getStageIcon(
+                                                                transfer.to_user_role
+                                                            )} text-primary me-2`}
+                                                        ></i>
+
+                                                        {index + 2}
+
+                                                    </td>
+
+                                                    <td>
+                                                        <strong>
+                                                            {transfer.from_user_name}
+                                                        </strong>
+
+                                                        <br />
+
+                                                        <small className="text-secondary">
+                                                            {getRoleName(
+                                                                transfer.from_user_role
+                                                            )}
+                                                        </small>
+                                                    </td>
+
+                                                    <td>
+                                                        <strong>
+                                                            {transfer.to_user_name}
+                                                        </strong>
+
+                                                        <br />
+
+                                                        <small className="text-secondary">
+                                                            {getRoleName(
+                                                                transfer.to_user_role
+                                                            )}
+                                                        </small>
+                                                    </td>
+
+                                                    <td>
+                                                        {transfer.quantity}
+                                                    </td>
+
+                                                    <td>
 
                                                         <span className="badge bg-success">
-                                                            Completed
+                                                            {transfer.status}
                                                         </span>
 
-                                                    )}
+                                                    </td>
 
-                                                </td>
+                                                    <td>
+                                                        {formatDate(
+                                                            transfer.transferred_at
+                                                        )}
+                                                    </td>
 
-                                                <td>
-                                                    {item.date}
-                                                </td>
+                                                </tr>
 
-                                            </tr>
-
-                                        ))}
+                                            )
+                                        )}
 
                                     </tbody>
 
@@ -308,9 +587,23 @@ function TrackProduct() {
 
                             </div>
 
+                            {(!productData.transfers ||
+                                productData.transfers.length === 0) && (
+
+                                <div className="alert alert-info mb-0">
+
+                                    <i className="bi bi-info-circle me-2"></i>
+
+                                    This product has not been transferred yet.
+                                    It is currently with the manufacturer.
+
+                                </div>
+
+                            )}
+
                         </div>
 
-                        {/* Product Journey */}
+                        {/* Visual Product Journey */}
 
                         <div className="card border-0 shadow-sm p-4 mt-4">
 
@@ -320,44 +613,69 @@ function TrackProduct() {
 
                             <div className="row g-4">
 
-                                {productData.journey.map((item, index) => (
+                                {/* Manufacturer */}
 
-                                    <div
-                                        className="col-md-4"
-                                        key={index}
-                                    >
+                                <div className="col-md-4">
 
-                                        <div className="card border p-4 h-100 text-center">
+                                    <div className="card border p-4 h-100 text-center">
 
-                                            <i
-                                                className={`bi ${item.icon} fs-1 text-primary`}
-                                            ></i>
+                                        <i className="bi bi-building fs-1 text-primary"></i>
 
-                                            <h5 className="fw-bold mt-3">
-                                                {item.stage}
-                                            </h5>
+                                        <h5 className="fw-bold mt-3">
+                                            Manufacturer
+                                        </h5>
 
-                                            <p className="text-secondary mb-0">
+                                        <p className="fw-semibold mb-1">
+                                            {productData.manufacturer?.name || '-'}
+                                        </p>
 
-                                                {item.stage === 'Manufacturer' &&
-                                                    'Product created and registered in the supply-chain system.'
-                                                }
-
-                                                {item.stage === 'Distributor' &&
-                                                    'Product transferred and received by the distributor.'
-                                                }
-
-                                                {item.stage === 'Retailer' &&
-                                                    'Product reaches the retailer for final distribution.'
-                                                }
-
-                                            </p>
-
-                                        </div>
+                                        <p className="text-secondary mb-0">
+                                            Product created and registered in the supply-chain system.
+                                        </p>
 
                                     </div>
 
-                                ))}
+                                </div>
+
+                                {/* Transfer Participants */}
+
+                                {productData.transfers?.map(
+                                    (transfer, index) => (
+
+                                        <div
+                                            className="col-md-4"
+                                            key={transfer.id}
+                                        >
+
+                                            <div className="card border p-4 h-100 text-center">
+
+                                                <i
+                                                    className={`bi ${getStageIcon(
+                                                        transfer.to_user_role
+                                                    )} fs-1 text-primary`}
+                                                ></i>
+
+                                                <h5 className="fw-bold mt-3">
+                                                    {getRoleName(
+                                                        transfer.to_user_role
+                                                    )}
+                                                </h5>
+
+                                                <p className="fw-semibold mb-1">
+                                                    {transfer.to_user_name}
+                                                </p>
+
+                                                <p className="text-secondary mb-0">
+                                                    Received {transfer.quantity} units from{' '}
+                                                    {transfer.from_user_name}.
+                                                </p>
+
+                                            </div>
+
+                                        </div>
+
+                                    )
+                                )}
 
                             </div>
 
@@ -372,17 +690,21 @@ function TrackProduct() {
                             </h4>
 
                             <p className="text-secondary">
-                                Scan the product QR code to verify its journey.
+                                This product was opened using its unique QR tracking link.
                             </p>
 
                             <div className="mt-3">
 
-                                <i className="bi bi-qr-code fs-1 text-primary"></i>
+                                <i className="bi bi-qr-code fs-1 text-success"></i>
 
                             </div>
 
-                            <p className="text-secondary mt-3 mb-0">
-                                QR verification will be connected later.
+                            <p className="text-success fw-semibold mt-3 mb-0">
+
+                                <i className="bi bi-check-circle me-2"></i>
+
+                                Product successfully verified
+
                             </p>
 
                         </div>

@@ -117,6 +117,10 @@ function DistributorDashboard() {
         setMessage('')
         setError('')
 
+        if (transferring) {
+            return
+        }
+
         if (!transferData.product_id) {
             setError('Please select a product')
             return
@@ -132,6 +136,13 @@ function DistributorDashboard() {
             return
         }
 
+        const transferQuantity = Number(transferData.quantity)
+
+        if (transferQuantity <= 0) {
+            setError('Quantity must be greater than 0')
+            return
+        }
+
         const selectedProduct = inventory.find(
             (product) =>
                 product.id === Number(transferData.product_id)
@@ -143,7 +154,7 @@ function DistributorDashboard() {
         }
 
         if (
-            Number(transferData.quantity) >
+            transferQuantity >
             Number(selectedProduct.quantity)
         ) {
             setError(
@@ -152,13 +163,15 @@ function DistributorDashboard() {
             return
         }
 
+        setTransferring(true)
+
         try {
 
             const data = await transferProduct({
                 product_id: Number(transferData.product_id),
                 from_user_id: user.id,
                 to_user_id: Number(transferData.to_user_id),
-                quantity: Number(transferData.quantity)
+                quantity: transferQuantity
             })
 
             setMessage(data.message)
@@ -169,12 +182,16 @@ function DistributorDashboard() {
                 quantity: ''
             })
 
-            loadInventory()
-            loadTransfers()
+            await loadInventory()
+            await loadTransfers()
 
         } catch (error) {
 
             setError(error.message)
+
+        } finally {
+
+            setTransferring(false)
 
         }
     }

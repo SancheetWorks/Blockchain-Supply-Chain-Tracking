@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import ProductQRCode from '../components/ProductQRCode'
 
 function ManufacturerDashboard() {
 
@@ -22,6 +23,8 @@ function ManufacturerDashboard() {
         to_user_id: '',
         quantity: ''
     })
+
+    const [selectedProduct, setSelectedProduct] = useState(null)
 
     const [message, setMessage] = useState('')
     const [error, setError] = useState('')
@@ -179,21 +182,23 @@ function ManufacturerDashboard() {
             return
         }
 
-        const selectedProduct = products.find(
+        const selectedProductForTransfer = products.find(
             (product) =>
                 product.id === Number(transferData.product_id)
         )
 
-        if (!selectedProduct) {
+        if (!selectedProductForTransfer) {
             setError('Selected product not found')
             return
         }
 
         if (
             Number(transferData.quantity) >
-            Number(selectedProduct.quantity)
+            Number(selectedProductForTransfer.quantity)
         ) {
-            setError('Transfer quantity cannot exceed available quantity')
+            setError(
+                'Transfer quantity cannot exceed available quantity'
+            )
             return
         }
 
@@ -240,7 +245,7 @@ function ManufacturerDashboard() {
         }
     }
 
-    const selectedProduct = products.find(
+    const selectedTransferProduct = products.find(
         (product) =>
             product.id === Number(transferData.product_id)
     )
@@ -250,13 +255,30 @@ function ManufacturerDashboard() {
 
             <div className="container">
 
-                <h2 className="fw-bold">
-                    Manufacturer Dashboard
-                </h2>
+                {/* Dashboard Header */}
 
-                <p className="text-secondary">
-                    Manage products and track their movement through the supply chain.
-                </p>
+                <div className="mb-4">
+
+                    <h2 className="fw-bold">
+                        Manufacturer Dashboard
+                    </h2>
+
+                    <p className="text-muted mb-1">
+                        Welcome, <strong>{user?.name}</strong>
+                    </p>
+
+                    <p className="text-muted mb-2">
+                        Role: <strong>Manufacturer</strong>
+                    </p>
+
+                    <p className="text-secondary mb-0">
+                        Manage products and track their movement through
+                        the supply chain.
+                    </p>
+
+                </div>
+
+                {/* Messages */}
 
                 {message && (
                     <div className="alert alert-success">
@@ -269,6 +291,8 @@ function ManufacturerDashboard() {
                         {error}
                     </div>
                 )}
+
+                {/* Add Product */}
 
                 <div className="card border-0 shadow-sm p-4 mt-4">
 
@@ -403,6 +427,8 @@ function ManufacturerDashboard() {
 
                 </div>
 
+                {/* My Products */}
+
                 <div className="card border-0 shadow-sm p-4 mt-4">
 
                     <h4 className="fw-bold mb-4">
@@ -430,12 +456,21 @@ function ManufacturerDashboard() {
                                 <thead>
 
                                     <tr>
+
                                         <th>Product ID</th>
+
                                         <th>Product Name</th>
+
                                         <th>Category</th>
+
                                         <th>Quantity</th>
+
                                         <th>Status</th>
+
                                         <th>Created</th>
+
+                                        <th>QR Code</th>
+
                                     </tr>
 
                                 </thead>
@@ -476,6 +511,24 @@ function ManufacturerDashboard() {
                                                 ).toLocaleDateString()}
                                             </td>
 
+                                            <td>
+
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-outline-primary btn-sm"
+                                                    onClick={() =>
+                                                        setSelectedProduct(product)
+                                                    }
+                                                >
+
+                                                    <i className="bi bi-qr-code me-1"></i>
+
+                                                    QR Code
+
+                                                </button>
+
+                                            </td>
+
                                         </tr>
 
                                     ))}
@@ -489,6 +542,54 @@ function ManufacturerDashboard() {
                     )}
 
                 </div>
+
+                {/* QR Code */}
+
+                {selectedProduct && (
+
+                    <div className="card border-0 shadow-sm p-4 mt-4">
+
+                        <div className="d-flex justify-content-between align-items-center mb-4">
+
+                            <h4 className="fw-bold mb-0">
+                                Product QR Code
+                            </h4>
+
+                            <button
+                                type="button"
+                                className="btn btn-outline-secondary btn-sm"
+                                onClick={() =>
+                                    setSelectedProduct(null)
+                                }
+                            >
+
+                                <i className="bi bi-x-lg me-1"></i>
+
+                                Close
+
+                            </button>
+
+                        </div>
+
+                        <div className="row justify-content-center">
+
+                            <div className="col-md-6">
+
+                                <ProductQRCode
+                                    productId={
+                                        selectedProduct.product_id
+                                    }
+                                />
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                )}
+
+                {/* Transfer Product */}
 
                 <div className="card border-0 shadow-sm p-4 mt-4">
 
@@ -531,7 +632,11 @@ function ManufacturerDashboard() {
                                             key={product.id}
                                             value={product.id}
                                         >
-                                            {product.product_id} - {product.product_name}
+
+                                            {product.product_id}
+                                            {' - '}
+                                            {product.product_name}
+
                                         </option>
 
                                     ))}
@@ -581,7 +686,11 @@ function ManufacturerDashboard() {
                                                 key={distributor.id}
                                                 value={distributor.id}
                                             >
-                                                {distributor.name} - {distributor.email}
+
+                                                {distributor.name}
+                                                {' - '}
+                                                {distributor.email}
+
                                             </option>
 
                                         ))
@@ -607,7 +716,9 @@ function ManufacturerDashboard() {
                                     className="form-control"
                                     placeholder="Enter quantity"
                                     min="1"
-                                    max={selectedProduct?.quantity || 1}
+                                    max={
+                                        selectedTransferProduct?.quantity || 1
+                                    }
                                     value={transferData.quantity}
                                     onChange={handleTransferChange}
                                     required
@@ -615,7 +726,7 @@ function ManufacturerDashboard() {
 
                                 <p className="text-secondary mt-1 mb-0">
                                     Available quantity:{' '}
-                                    {selectedProduct?.quantity || 0}
+                                    {selectedTransferProduct?.quantity || 0}
                                 </p>
 
                             </div>
@@ -626,8 +737,11 @@ function ManufacturerDashboard() {
                             type="submit"
                             className="btn btn-primary mt-2"
                         >
+
                             <i className="bi bi-arrow-right-circle me-2"></i>
+
                             Transfer Product
+
                         </button>
 
                     </form>
