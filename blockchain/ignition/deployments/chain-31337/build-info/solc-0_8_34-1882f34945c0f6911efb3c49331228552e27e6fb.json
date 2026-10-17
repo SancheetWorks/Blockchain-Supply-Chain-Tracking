@@ -1,0 +1,49 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_34-1882f34945c0f6911efb3c49331228552e27e6fb",
+  "solcVersion": "0.8.34",
+  "solcLongVersion": "0.8.34+commit.80d5c536",
+  "compilerType": "solc",
+  "toolVersions": {
+    "hardhat": "3.17.0"
+  },
+  "userSourceNameMap": {
+    "contracts/SupplyChain.sol": "project/contracts/SupplyChain.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "osaka",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode.linkReferences",
+            "evm.bytecode.object",
+            "evm.bytecode.opcodes",
+            "evm.bytecode.sourceMap",
+            "evm.deployedBytecode.immutableReferences",
+            "evm.deployedBytecode.linkReferences",
+            "evm.deployedBytecode.object",
+            "evm.deployedBytecode.opcodes",
+            "evm.deployedBytecode.sourceMap",
+            "evm.methodIdentifiers"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/SupplyChain.sol": {
+        "content": "// SPDX-License-Identifier: MIT\r\npragma solidity ^0.8.24;\r\n\r\ncontract SupplyChain {\r\n\r\n    struct Product {\r\n        string productId;\r\n        string productName;\r\n        address manufacturer;\r\n        address currentOwner;\r\n        uint256 createdAt;\r\n        bool exists;\r\n    }\r\n\r\n    struct Transfer {\r\n        address from;\r\n        address to;\r\n        uint256 timestamp;\r\n    }\r\n\r\n    mapping(string => Product) private products;\r\n\r\n    mapping(string => Transfer[]) private transferHistory;\r\n\r\n\r\n    // Create a new product\r\n    function createProduct(\r\n        string memory _productId,\r\n        string memory _productName\r\n    ) public {\r\n\r\n        require(\r\n            !products[_productId].exists,\r\n            \"Product already exists\"\r\n        );\r\n\r\n        products[_productId] = Product({\r\n            productId: _productId,\r\n            productName: _productName,\r\n            manufacturer: msg.sender,\r\n            currentOwner: msg.sender,\r\n            createdAt: block.timestamp,\r\n            exists: true\r\n        });\r\n    }\r\n\r\n\r\n    // Transfer product to the next participant\r\n    function transferProduct(\r\n        string memory _productId,\r\n        address _newOwner\r\n    ) public {\r\n\r\n        require(\r\n            products[_productId].exists,\r\n            \"Product does not exist\"\r\n        );\r\n\r\n        require(\r\n            products[_productId].currentOwner == msg.sender,\r\n            \"Only current owner can transfer\"\r\n        );\r\n\r\n        require(\r\n            _newOwner != address(0),\r\n            \"Invalid new owner\"\r\n        );\r\n\r\n        transferHistory[_productId].push(\r\n            Transfer({\r\n                from: msg.sender,\r\n                to: _newOwner,\r\n                timestamp: block.timestamp\r\n            })\r\n        );\r\n\r\n        products[_productId].currentOwner = _newOwner;\r\n    }\r\n\r\n\r\n    // Get product details\r\n    function getProduct(\r\n        string memory _productId\r\n    )\r\n        public\r\n        view\r\n        returns (\r\n            string memory,\r\n            string memory,\r\n            address,\r\n            address,\r\n            uint256,\r\n            bool\r\n        )\r\n    {\r\n\r\n        require(\r\n            products[_productId].exists,\r\n            \"Product does not exist\"\r\n        );\r\n\r\n        Product memory product = products[_productId];\r\n\r\n        return (\r\n            product.productId,\r\n            product.productName,\r\n            product.manufacturer,\r\n            product.currentOwner,\r\n            product.createdAt,\r\n            product.exists\r\n        );\r\n    }\r\n\r\n\r\n    // Get complete transfer history\r\n    function getHistory(\r\n        string memory _productId\r\n    )\r\n        public\r\n        view\r\n        returns (Transfer[] memory)\r\n    {\r\n\r\n        require(\r\n            products[_productId].exists,\r\n            \"Product does not exist\"\r\n        );\r\n\r\n        return transferHistory[_productId];\r\n    }\r\n\r\n\r\n    // Verify whether a product exists\r\n    function verifyProduct(\r\n        string memory _productId\r\n    )\r\n        public\r\n        view\r\n        returns (bool)\r\n    {\r\n\r\n        return products[_productId].exists;\r\n    }\r\n}"
+      }
+    }
+  }
+}
